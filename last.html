@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Flower Garden(ARAMBAG)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-white text-black min-h-screen p-6">
+<h1 class="text-2xl font-bold text-center mb-4">
+  🌸 ফুলেল বাগান  (ARAMBAG)
+</h1>
+<p class="text-center mb-6">Month: <span class="font-semibold">OCTOBER</span> | Total Members: <span class="font-semibold">22</span></p>
+
+<!-- Hero Section -->
+<div class="bg-gray-100 border border-gray-300 rounded-2xl p-4 mb-6 grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
+  <div>
+    <p class="font-semibold">Total Month Cost</p>
+    <p id="hero-total-cost" class="font-bold text-lg">0</p>
+  </div>
+  <div>
+    <p class="font-semibold">Total Meals</p>
+    <p id="hero-total-meals" class="font-bold text-lg">0</p>
+  </div>
+  <div>
+    <p class="font-semibold">Meal Rate</p>
+    <p id="hero-meal-rate" class="font-bold text-lg">0</p>
+  </div>
+  <div>
+    <p class="font-semibold">Total Earn</p>
+    <p id="hero-total-earn" class="font-bold text-lg">0</p>
+  </div>
+</div>
+
+<!-- Manager Login -->
+<div class="flex justify-center mb-6">
+  <input id="adminPassword" type="password" placeholder="Enter Manager Password" class="border border-gray-400 rounded-l px-3 py-2 w-64 focus:outline-none"/>
+  <button onclick="checkPassword()" class="bg-gray-800 text-white px-4 py-2 rounded-r hover:bg-black transition"> Manager</button>
+</div>
+
+<!-- Search Bar -->
+<div class="flex justify-center mb-6">
+  <input id="search" type="number" placeholder="Search Member Number (1–22)" class="border border-gray-400 rounded-l px-3 py-2 w-64 focus:outline-none" min="1" max="22"/>
+  <button onclick="searchMember()" class="bg-gray-800 text-white px-4 py-2 rounded-r hover:bg-black transition">Search</button>
+</div>
+
+<!-- Member Cards -->
+<div id="member-list" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+
+<!-- Footer bKash Payment Info (Icon Only) -->
+<footer class="mt-6 p-4 bg-yellow-100 border border-yellow-300 rounded-2xl text-center">
+    <a href="https://wa.me/+08801613277614" target="_blank">Contact with Manager</a> <br> <br>
+
+  <button onclick="showBkash()" class="focus:outline-none">
+    <img src="./bkash.png" alt="bKash" class="inline-block w-12 h-12"/>
+  </button>
+  <p id="bkashNumber" class="mt-2 font-bold text-gray-800 hidden"><a href="tel:+8801613277614">Pay via bKash</a></p>
+</footer>
+
+<script>
+const members = 23;
+const khalBill = 320;
+const container = document.getElementById("member-list");
+const adminPassword = "123456789";
+let managerMode = false;
+
+let savedData = JSON.parse(localStorage.getItem("hostelData")) || {};
+
+// Create member cards
+for(let i=1;i<=members;i++){
+  const card=document.createElement("div");
+  card.className="member-card border border-gray-400 rounded-2xl p-4 shadow-sm";
+  card.setAttribute("data-member",i);
+
+  const data=savedData[i]||{name:"",meals:"",rate:"",paid:"",mealCost:0,total:0,due:0,status:"Not Updated"};
+
+  card.innerHTML=`
+    <h2 class="text-lg font-semibold mb-2 text-center">🍽️ Member <span id="memberNum-${i}">${i}</span></h2>
+
+    <label class="block mb-3 text-center">
+      Name:
+      <input type="text" id="name-${i}" value="${data.name}" class="w-3/4 border rounded p-1 text-center member-name-input" placeholder="Enter member name" disabled />
+    </label>
+
+    <div class="space-y-2">
+      <label class="block">Total Meals Taken:
+        <input type="number" id="meals-${i}" value="${data.meals}" class="w-full border rounded p-1 member-input" placeholder="Enter total meals" disabled />
+      </label>
+      <label class="block">Meal Rate (per meal):
+        <input type="number" id="rate-${i}" value="${data.rate}" class="w-full border rounded p-1 member-input" placeholder="Enter rate" disabled />
+      </label>
+
+      <p class="mt-2 font-semibold">Total Meal Cost : <span id="mealCost-${i}">${data.mealCost}</span> BDT</p>
+      <p class="font-semibold">Khal Bill : <span>${khalBill}</span> BDT</p>
+      <p class="font-bold">Total Payable: <span id="total-${i}">${data.total}</span> BDT</p>
+
+      <label class="block">Amount Paid:
+        <input type="number" id="paid-${i}" value="${data.paid}" class="w-full border rounded p-1 member-input" placeholder="Enter paid amount" disabled />
+      </label>
+
+      <p class="font-semibold">Remaining / Due: <span id="due-${i}">${data.due}</span> BDT</p>
+      <p class="mt-2 font-semibold">Payment Status: <span id="status-${i}" class="font-bold ${data.status==="Paid"?"text-green-600":data.status==="Due"?"text-red-600":"text-gray-700"}">${data.status}</span></p>
+
+      <button onclick="calculate(${i})" id="calcBtn-${i}" class="mt-3 w-full bg-gray-800 text-white py-1 rounded hover:bg-black transition hidden">Calculate & Save</button>
+    </div>
+  `;
+  container.appendChild(card);
+}
+
+// Calculation function
+function calculate(id){
+  const name = document.getElementById(`name-${id}`).value || '';
+  const meals=parseFloat(document.getElementById(`meals-${id}`).value)||0;
+  const rate=parseFloat(document.getElementById(`rate-${id}`).value)||0;
+  const paid=parseFloat(document.getElementById(`paid-${id}`).value)||0;
+
+  const mealCost=meals*rate;
+  const total=mealCost+khalBill;
+  const due=total-paid;
+
+  document.getElementById(`mealCost-${id}`).textContent=mealCost.toFixed(2);
+  document.getElementById(`total-${id}`).textContent=total.toFixed(2);
+  document.getElementById(`due-${id}`).textContent=due.toFixed(2);
+
+  const statusEl=document.getElementById(`status-${id}`);
+  let status="Not Updated";
+  if(due<=0 && total>0){status="Paid"; statusEl.className="font-bold text-green-600";}
+  else if(due>0){status="Due"; statusEl.className="font-bold text-red-600";}
+  else{statusEl.className="font-bold text-gray-700";}
+  statusEl.textContent=status;
+
+  savedData[id]={name,meals,rate,paid,mealCost,total,due,status};
+  localStorage.setItem("hostelData",JSON.stringify(savedData));
+
+  updateHero();
+}
+
+// Search member
+function searchMember(){
+  const searchInput=document.getElementById("search").value.trim();
+  const cards=document.querySelectorAll(".member-card");
+  if(!searchInput){cards.forEach(card=>card.style.display="block"); return;}
+  const memberNumber=parseInt(searchInput);
+  cards.forEach(card=>{card.style.display=parseInt(card.getAttribute("data-member"))===memberNumber?"block":"none";});
+}
+
+// Password check
+function checkPassword(){
+  const input=document.getElementById("adminPassword").value.trim();
+  if(input===adminPassword){
+    managerMode=true;
+    alert("✅ Manager mode activated!");
+    enableEditing();
+  } else alert("❌ Incorrect password!");
+}
+
+// Enable editing for manager
+function enableEditing(){
+  document.querySelectorAll(".member-input, .member-name-input").forEach(el => el.disabled = false);
+  document.querySelectorAll("button[id^='calcBtn-']").forEach(btn => btn.classList.remove("hidden"));
+}
+
+// Update Hero Section
+function updateHero(){
+  let totalMonthCost=0, totalMeals=0, totalEarn=0, mealRates=[];
+  for(let i=1;i<=members;i++){
+    const data=savedData[i];
+    if(data){
+      totalMonthCost+=data.total||0;
+      totalMeals+=parseFloat(data.meals)||0;
+      totalEarn+=parseFloat(data.paid)||0;
+      if(parseFloat(data.rate)) mealRates.push(parseFloat(data.rate));
+    }
+  }
+  const avgMealRate=mealRates.length>0?mealRates.reduce((a,b)=>a+b,0)/mealRates.length:0;
+  document.getElementById("hero-total-cost").textContent=totalMonthCost.toFixed(2);
+  document.getElementById("hero-total-meals").textContent=totalMeals;
+  document.getElementById("hero-meal-rate").textContent=avgMealRate.toFixed(2);
+  document.getElementById("hero-total-earn").textContent=totalEarn.toFixed(2);
+}
+
+// Show bKash number on icon click
+function showBkash(){
+  const num = document.getElementById("bkashNumber");
+  num.classList.toggle("hidden");
+}
+
+// Initialize hero
+updateHero();
+</script>
+</body>
+</html>
+
